@@ -25,8 +25,8 @@ struct BetterCCEGLView : Modify<BetterCCEGLView, CCEGLView>
 		if (action != GLFW_RELEASE)
 		{
 			if (
-				!BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL) &&
-				!BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT)
+				!BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, mods) &&
+				!BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
 			) {
 				switch (key)
 				{
@@ -48,24 +48,24 @@ struct BetterCCEGLView : Modify<BetterCCEGLView, CCEGLView>
 			{
 				case GLFW_KEY_UP:
 					return g_selectedInput->onUpArrowKey(
-						BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT)
+						BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
 					);
 
 				case GLFW_KEY_DOWN:
 					return g_selectedInput->onDownArrowKey(
-						BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT)
+						BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
 					);
 
 				case GLFW_KEY_RIGHT:
 					return g_selectedInput->onRightArrowKey(
-						BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL),
-						BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT)
+						BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, mods),
+						BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
 					);
 
 				case GLFW_KEY_LEFT:
 					return g_selectedInput->onLeftArrowKey(
-						BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL),
-						BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT)
+						BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, mods),
+						BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
 					);
 
 				default:
@@ -76,8 +76,8 @@ struct BetterCCEGLView : Modify<BetterCCEGLView, CCEGLView>
 		// this is what onGLFWKeyCallback actually does to check for control lol
 		if (
 			action == GLFW_PRESS &&
-			BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL) &&
-			!BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT)
+			BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, mods) &&
+			!BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
 		) {
 			switch (key)
 			{
@@ -105,19 +105,33 @@ struct BetterCCEGLView : Modify<BetterCCEGLView, CCEGLView>
 
 		if (action == GLFW_PRESS)
 		{
-			if (!BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL))
+			if (!BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, mods))
 			{
 				switch (key)
 				{
 					case GLFW_KEY_HOME:
 						return g_selectedInput->onHomeKey(
-							BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT)
+							BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
 						);
 
 					case GLFW_KEY_END:
 						return g_selectedInput->onEndKey(
-							BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT)
+							BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
 						);
+
+					default:
+						break;
+				}
+			}
+			else
+			{
+				switch (key)
+				{
+					case GLFW_KEY_LEFT:
+						return g_selectedInput->onHomeKey(false);
+
+					case GLFW_KEY_RIGHT:
+						return g_selectedInput->onEndKey(false);
 
 					default:
 						break;
@@ -125,8 +139,8 @@ struct BetterCCEGLView : Modify<BetterCCEGLView, CCEGLView>
 			}
 
 			if (
-				BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT) &&
-				!BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL)
+				BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods) &&
+				!BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, mods)
 			) {
 				switch (key)
 				{
@@ -138,6 +152,10 @@ struct BetterCCEGLView : Modify<BetterCCEGLView, CCEGLView>
 				}
 			}
 
+			// swallow ctrl/alt combos that weren't handled above so IME doesn't insert the key
+			if (BI::platform::hasShortcutModifier(mods))
+				return;
+
 			CCEGLView::onGLFWKeyCallback(window, key, scancode, action, mods);
 		}
 	}
@@ -147,26 +165,17 @@ struct BetterCCEGLView : Modify<BetterCCEGLView, CCEGLView>
 	// this fixes it :D
 	void onGLFWMouseCallBack(GLFWwindow* window, int button, int action, int mods)
 	{
-		CCEGLView::onGLFWMouseCallBack(window, button, action, mods);
+		if (
+			g_selectedInput &&
+			button == GLFW_MOUSE_BUTTON_1 &&
+			action == GLFW_PRESS
+		) {
+			cocos2d::CCPoint const touchLoc = BI::cocos::getTouchLocation();
 
-		if (!g_selectedInput || button != GLFW_MOUSE_BUTTON_1 || action == GLFW_REPEAT) return;
-
-		if (action == GLFW_PRESS)
-		{
-			CCSize winSize = CCDirector::sharedDirector()->getWinSize();
-			CCPoint mousePos = BI::cocos::getMousePosition();
-
-			// OpenGL's mouse origin is the bottom left
-			// CCTouch's mouse origin is top left (because of course it is)
-			CCTouch touch{};
-			touch.setTouchInfo(0, mousePos.x, winSize.height - mousePos.y);
-
-			g_selectedInput->useUpdateBlinkPos(true);
-
-			// 🥰
-			g_selectedInput->ccTouchBegan(&touch, nullptr);
+			if (!BI::cocos::isTouchOnInput(g_selectedInput, touchLoc))
+				g_selectedInput->deselectInput();
 		}
-		else
-			g_selectedInput->useUpdateBlinkPos(false);
+
+		CCEGLView::onGLFWMouseCallBack(window, button, action, mods);
 	}
 };

@@ -112,6 +112,11 @@ namespace BI
 
 			return cocos2d::CCPoint{ mouse.x, 1.f - mouse.y } * winSize;
 		}
+
+		inline cocos2d::CCPoint getTouchLocation()
+		{
+			return getMousePosition();
+		}
 #endif
 
 		inline bool isPositionInNode(cocos2d::CCNode* node, const cocos2d::CCPoint& pos)
@@ -128,6 +133,11 @@ namespace BI
 
 			return rect.containsPoint(pos);
 		}
+
+		inline bool isTouchOnInput(cocos2d::CCNode* node, const cocos2d::CCPoint& glTouch)
+		{
+			return node->boundingBox().containsPoint(node->convertToNodeSpace(glTouch));
+		}
 	}
 
 	enum class PlatformKey
@@ -142,20 +152,28 @@ namespace BI
 	namespace platform
 	{
 #ifdef GEODE_IS_WINDOWS
-		inline bool keyDown(PlatformKey key)
+		inline bool keyDown(PlatformKey key, int glfwMods = 0)
 		{
 			switch (key)
 			{
 				case BI::PlatformKey::LEFT_CONTROL:
-					return GetKeyState(VK_CONTROL) & 0x8000;
+					return (glfwMods & GLFW_MOD_CONTROL) || (GetKeyState(VK_CONTROL) & 0x8000);
 				case BI::PlatformKey::LEFT_SHIFT:
-					return GetKeyState(VK_SHIFT) & 0x8000;
+					return (glfwMods & GLFW_MOD_SHIFT) || (GetKeyState(VK_SHIFT) & 0x8000);
 				case BI::PlatformKey::LEFT_ALT:
-					return GetKeyState(VK_LMENU) & 0x8000;
+					return (glfwMods & GLFW_MOD_ALT) || (GetKeyState(VK_LMENU) & 0x8000);
 			}
 
 			return false;
 		}
+
+		inline bool hasShortcutModifier(int glfwMods = 0)
+		{
+			return keyDown(PlatformKey::LEFT_CONTROL, glfwMods)
+				|| keyDown(PlatformKey::LEFT_ALT, glfwMods);
+		}
+#elif defined(GEODE_IS_MACOS)
+		bool hasShortcutModifier();
 #endif
 	}
 

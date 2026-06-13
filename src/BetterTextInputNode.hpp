@@ -70,10 +70,23 @@ public:
 
 	void onStringEmpty();
 
+	void syncStringFromView();
+
+	bool onTextFieldInsertText(
+		cocos2d::CCTextFieldTTF* pSender,
+		char const* text,
+		int nLen,
+		cocos2d::enumKeyCodes keyCodes
+	) override;
+
 	// getters and setters
 
 	void useUpdateBlinkPos(bool toggle);
 	void showTextOrPlaceholder(bool toggle);
+
+	void setCursorFromClick(cocos2d::CCPoint touchLocation);
+
+	bool ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
 
 	// TODO: maybe export these?
 	int getCursorPos();
