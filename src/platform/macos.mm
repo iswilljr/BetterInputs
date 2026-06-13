@@ -33,27 +33,25 @@ namespace BI
 
 			return false;
 		}
+
+		bool hasShortcutModifier()
+		{
+			NSEventModifierFlags const flags = [NSEvent modifierFlags];
+			return (flags & (NSEventModifierFlagCommand | NSEventModifierFlagControl | NSEventModifierFlagOption)) != 0;
+		}
 	}
 
 	namespace cocos
 	{
-		inline cocos2d::CCPoint getMousePosition(NSEvent* event)
+		inline cocos2d::CCPoint getTouchLocation(EAGLView* view, NSEvent* event)
 		{
-			auto window = [event window];
-			auto windowFrame = [window frame];
-			auto viewFrame = [[window contentView] frame];
-			auto scaleFactor = cocos2d::CCPoint{
-				cocos2d::CCDirector::get()->getWinSize()
-			} / cocos2d::CCPoint{
-				static_cast<float>(viewFrame.size.width),
-				static_cast<float>(viewFrame.size.height)
-			};
-			auto mousePos = [NSEvent mouseLocation];
+			NSPoint const point = [view convertPoint:[event locationInWindow] fromView:nil];
+			float const frameZoomFactor = [view frameZoomFactor];
+			float const backingScaleFactor = [view getBackingFactor];
+			float const mouseX = (point.x / frameZoomFactor) / backingScaleFactor;
+			float const mouseY = (([view getHeight] - point.y) / frameZoomFactor) / backingScaleFactor;
 
-			return cocos2d::CCPoint{
-				static_cast<float>(mousePos.x - windowFrame.origin.x),
-				static_cast<float>(mousePos.y - windowFrame.origin.y)
-			} * scaleFactor;
+			return { mouseX, mouseY };
 		}
 	}
 }
@@ -103,19 +101,19 @@ void keyDownExec(EAGLView* self, SEL sel, NSEvent* event)
 			);
 
 		case kVK_DownArrow:
-			return g_selectedInput->onUpArrowKey(
+			return g_selectedInput->onDownArrowKey(
 				BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, event)
 			);
 
 		case kVK_RightArrow:
 			return g_selectedInput->onRightArrowKey(
-				BI::platform::keyDown(BI::PlatformKey::LEFT_ALT, event),
+				BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, event),
 				BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, event)
 			);
 
 		case kVK_LeftArrow:
 			return g_selectedInput->onLeftArrowKey(
-				BI::platform::keyDown(BI::PlatformKey::LEFT_ALT, event),
+				BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, event),
 				BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, event)
 			);
 
@@ -203,6 +201,10 @@ void keyDownExec(EAGLView* self, SEL sel, NSEvent* event)
 		}
 	}
 
+	// swallow cmd/ctrl/option combos that weren't handled above so IME doesn't insert the key
+	if (BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, event))
+		return;
+
 	// key is probably a regular character, allow CCIMEDispatcher to pick up the event
 	keyDownExecOIMP(self, sel, event);
 }
@@ -210,9 +212,6 @@ void keyDownExec(EAGLView* self, SEL sel, NSEvent* event)
 static key_event_t keyUpExecOIMP;
 void keyUpExec(EAGLView* self, SEL sel, NSEvent* event)
 {
-	if (g_selectedInput)
-		return;
-
 	keyUpExecOIMP(self, sel, event);
 }
 
@@ -223,25 +222,18 @@ void mouseDownExec(EAGLView* self, SEL sel, NSEvent* event)
 	if (!g_selectedInput)
 		return mouseDownExecOIMP(self, sel, event);
 
-	cocos2d::CCSize winSize = cocos2d::CCDirector::sharedDirector()->getWinSize();
-	cocos2d::CCPoint mousePos = BI::cocos::getMousePosition(event);
+	cocos2d::CCPoint const touchLoc = BI::cocos::getTouchLocation(self, event);
 
-	cocos2d::CCTouch touch{};
-	touch.setTouchInfo(0, mousePos.x, winSize.height - mousePos.y);
+	if (!BI::cocos::isTouchOnInput(g_selectedInput, touchLoc))
+		g_selectedInput->deselectInput();
 
-	g_selectedInput->useUpdateBlinkPos(true);
-
-	// 🥰
-	g_selectedInput->ccTouchBegan(&touch, nullptr);
+	mouseDownExecOIMP(self, sel, event);
 }
 
 static key_event_t mouseUpExecOIMP;
 void mouseUpExec(EAGLView* self, SEL sel, NSEvent* event)
 {
-	if (!g_selectedInput)
-		return mouseUpExecOIMP(self, sel, event);
-
-	g_selectedInput->useUpdateBlinkPos(false);
+	mouseUpExecOIMP(self, sel, event);
 }
 
 
