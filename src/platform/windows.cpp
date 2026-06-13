@@ -1,123 +1,139 @@
-#include <Geode/modify/CCEGLView.hpp>
-#include <Geode/cocos/robtop/glfw/glfw3.h>
+#include <Geode/DefaultInclude.hpp>
+#include <Geode/utils/Keyboard.hpp>
 
 #include "BetterTextInputNode.hpp"
 
 #include "utils.hpp"
 
+// Win64 bindings inline CCEGLView::onGLFWKeyCallback/onGLFWMouseCallBack, so we
+// can't Modify them. Use Geode's KeyboardInputEvent/MouseInputEvent instead.
+
 using namespace geode::prelude;
 
-// handles ctrl and shift
-// also fixes mouse clicks
-struct BetterCCEGLView : Modify<BetterCCEGLView, CCEGLView>
+namespace
 {
-	void onGLFWKeyCallback(
-		GLFWwindow* window,
-		int key,
-		int scancode,
-		int action,
-		int mods
-	) {
+	bool isCtrl(KeyboardModifier mods)
+	{
+		return (mods & KeyboardModifier::Control)
+			|| BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL);
+	}
+
+	bool isShift(KeyboardModifier mods)
+	{
+		return (mods & KeyboardModifier::Shift)
+			|| BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT);
+	}
+
+	bool hasShortcut(KeyboardModifier mods)
+	{
+		return isCtrl(mods)
+			|| (mods & KeyboardModifier::Alt)
+			|| BI::platform::keyDown(BI::PlatformKey::LEFT_ALT);
+	}
+
+	ListenerResult handleKey(KeyboardInputData& data)
+	{
 		if (!g_selectedInput)
-			return CCEGLView::onGLFWKeyCallback(window, key, scancode, action, mods);
+			return ListenerResult::Propagate;
+
+		if (data.action == KeyboardInputData::Action::Release)
+			return ListenerResult::Propagate;
+
+		auto const key = data.key;
+		auto const mods = data.modifiers;
 
 		// on click, can be held
-		if (action != GLFW_RELEASE)
+		if (!isCtrl(mods) && !isShift(mods))
 		{
-			if (
-				!BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, mods) &&
-				!BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
-			) {
-				switch (key)
-				{
-					case GLFW_KEY_ESCAPE:
-						if (!BI::geode::get<bool>("alternate-deselect"))
-							return g_selectedInput->deselectInput();
-						break;
-
-					case GLFW_KEY_BACKSPACE:
-					case GLFW_KEY_DELETE:
-						return g_selectedInput->onDelete(false, key == GLFW_KEY_DELETE);
-
-					default:
-						break;
-				}
-			}
-
 			switch (key)
 			{
-				case GLFW_KEY_UP:
-					return g_selectedInput->onUpArrowKey(
-						BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
-					);
+				case KEY_Escape:
+					if (!BI::geode::get<bool>("alternate-deselect"))
+					{
+						g_selectedInput->deselectInput();
+						return ListenerResult::Stop;
+					}
+					break;
 
-				case GLFW_KEY_DOWN:
-					return g_selectedInput->onDownArrowKey(
-						BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
-					);
-
-				case GLFW_KEY_RIGHT:
-					return g_selectedInput->onRightArrowKey(
-						BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, mods),
-						BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
-					);
-
-				case GLFW_KEY_LEFT:
-					return g_selectedInput->onLeftArrowKey(
-						BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, mods),
-						BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
-					);
+				case KEY_Backspace:
+				case KEY_Delete:
+					g_selectedInput->onDelete(false, key == KEY_Delete);
+					return ListenerResult::Stop;
 
 				default:
 					break;
 			}
 		}
 
-		// this is what onGLFWKeyCallback actually does to check for control lol
+		switch (key)
+		{
+			case KEY_Up:
+				g_selectedInput->onUpArrowKey(isShift(mods));
+				return ListenerResult::Stop;
+
+			case KEY_Down:
+				g_selectedInput->onDownArrowKey(isShift(mods));
+				return ListenerResult::Stop;
+
+			case KEY_Right:
+				g_selectedInput->onRightArrowKey(isCtrl(mods), isShift(mods));
+				return ListenerResult::Stop;
+
+			case KEY_Left:
+				g_selectedInput->onLeftArrowKey(isCtrl(mods), isShift(mods));
+				return ListenerResult::Stop;
+
+			default:
+				break;
+		}
+
 		if (
-			action == GLFW_PRESS &&
-			BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, mods) &&
-			!BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
+			data.action == KeyboardInputData::Action::Press &&
+			isCtrl(mods) &&
+			!isShift(mods)
 		) {
 			switch (key)
 			{
-				case GLFW_KEY_A:
-					return g_selectedInput->highlightFromToPos(0, -1);
+				case KEY_A:
+					g_selectedInput->highlightFromToPos(0, -1);
+					return ListenerResult::Stop;
 
-				case GLFW_KEY_INSERT:
-				case GLFW_KEY_C:
-					return g_selectedInput->onCopy();
+				case KEY_Insert:
+				case KEY_C:
+					g_selectedInput->onCopy();
+					return ListenerResult::Stop;
 
-				case GLFW_KEY_V:
-					return g_selectedInput->onPaste();
+				case KEY_V:
+					g_selectedInput->onPaste();
+					return ListenerResult::Stop;
 
-				case GLFW_KEY_X:
-					return g_selectedInput->onCut();
+				case KEY_X:
+					g_selectedInput->onCut();
+					return ListenerResult::Stop;
 
-				case GLFW_KEY_BACKSPACE:
-				case GLFW_KEY_DELETE:
-					return g_selectedInput->onDelete(true, key == GLFW_KEY_DELETE);
+				case KEY_Backspace:
+				case KEY_Delete:
+					g_selectedInput->onDelete(true, key == KEY_Delete);
+					return ListenerResult::Stop;
 
 				default:
 					break;
 			}
 		}
 
-		if (action == GLFW_PRESS)
+		if (data.action == KeyboardInputData::Action::Press)
 		{
-			if (!BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, mods))
+			if (!isCtrl(mods))
 			{
 				switch (key)
 				{
-					case GLFW_KEY_HOME:
-						return g_selectedInput->onHomeKey(
-							BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
-						);
+					case KEY_Home:
+						g_selectedInput->onHomeKey(isShift(mods));
+						return ListenerResult::Stop;
 
-					case GLFW_KEY_END:
-						return g_selectedInput->onEndKey(
-							BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods)
-						);
+					case KEY_End:
+						g_selectedInput->onEndKey(isShift(mods));
+						return ListenerResult::Stop;
 
 					default:
 						break;
@@ -127,25 +143,26 @@ struct BetterCCEGLView : Modify<BetterCCEGLView, CCEGLView>
 			{
 				switch (key)
 				{
-					case GLFW_KEY_LEFT:
-						return g_selectedInput->onHomeKey(false);
+					case KEY_Left:
+						g_selectedInput->onHomeKey(false);
+						return ListenerResult::Stop;
 
-					case GLFW_KEY_RIGHT:
-						return g_selectedInput->onEndKey(false);
+					case KEY_Right:
+						g_selectedInput->onEndKey(false);
+						return ListenerResult::Stop;
 
 					default:
 						break;
 				}
 			}
 
-			if (
-				BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT, mods) &&
-				!BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL, mods)
-			) {
+			if (isShift(mods) && !isCtrl(mods))
+			{
 				switch (key)
 				{
-					case GLFW_KEY_INSERT:
-						return g_selectedInput->onPaste();
+					case KEY_Insert:
+						g_selectedInput->onPaste();
+						return ListenerResult::Stop;
 
 					default:
 						break;
@@ -153,29 +170,30 @@ struct BetterCCEGLView : Modify<BetterCCEGLView, CCEGLView>
 			}
 
 			// swallow ctrl/alt combos that weren't handled above so IME doesn't insert the key
-			if (BI::platform::hasShortcutModifier(mods))
-				return;
-
-			CCEGLView::onGLFWKeyCallback(window, key, scancode, action, mods);
+			if (hasShortcut(mods))
+				return ListenerResult::Stop;
 		}
+
+		return ListenerResult::Propagate;
 	}
 
-	// for some odd reason, the cursor's position isnt updated until the 2nd click
-	// or not at all in TextAreas
-	// this fixes it :D
-	void onGLFWMouseCallBack(GLFWwindow* window, int button, int action, int mods)
+	ListenerResult handleMouse(MouseInputData& data)
 	{
 		if (
 			g_selectedInput &&
-			button == GLFW_MOUSE_BUTTON_1 &&
-			action == GLFW_PRESS
+			data.button == MouseInputData::Button::Left &&
+			data.action == MouseInputData::Action::Press
 		) {
-			cocos2d::CCPoint const touchLoc = BI::cocos::getTouchLocation();
-
-			if (!BI::cocos::isTouchOnInput(g_selectedInput, touchLoc))
+			if (!BI::cocos::isTouchOnInput(g_selectedInput, BI::cocos::getTouchLocation()))
 				g_selectedInput->deselectInput();
 		}
 
-		CCEGLView::onGLFWMouseCallBack(window, button, action, mods);
+		return ListenerResult::Propagate;
 	}
-};
+}
+
+$execute
+{
+	KeyboardInputEvent().listen(handleKey);
+	MouseInputEvent().listen(handleMouse);
+}
