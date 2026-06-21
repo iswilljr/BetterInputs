@@ -2,9 +2,9 @@
 
 #include "BetterTextInputNode.hpp"
 
-// backspace and del is handled in dispatchDeleteBackward/dispatchDeleteForward then in CCEGLView::onGLFWKeyCallback/[EAGLView keyDownExec:]
-// same goes for all the other characters (dispatchInsertText then CCEGLView::onGLFWKeyCallback/[EAGLView keyDownExec:])
-// except for ctrl and shift, which are only handled in CCEGLView::onGLFWKeyCallback/[EAGLView keyDownExec:]
+// backspace and del is handled in dispatchDeleteBackward/dispatchDeleteForward then in KeyboardInputEvent/[EAGLView keyDownExec:]
+// same goes for all the other characters (dispatchInsertText then KeyboardInputEvent/[EAGLView keyDownExec:])
+// except for ctrl and shift, which are only handled in KeyboardInputEvent/[EAGLView keyDownExec:]
 struct BetterCCIMEDispatcher : geode::Modify<BetterCCIMEDispatcher, cocos2d::CCIMEDispatcher>
 {
 	void dispatchDeleteBackward()
