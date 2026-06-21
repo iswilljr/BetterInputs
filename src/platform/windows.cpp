@@ -190,6 +190,6 @@ struct BetterCCEGLViewChar : Modify<BetterCCEGLViewChar, CCEGLView>
 
 $execute
 {
-	KeyboardInputEvent().listen(handleKey, -100);
-	MouseInputEvent().listen(handleMouse);
+	KeyboardInputEvent().listen(handleKey, -100).leak();
+	MouseInputEvent().listen(handleMouse).leak();
 }
