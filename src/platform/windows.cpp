@@ -1,12 +1,14 @@
 #include <Geode/DefaultInclude.hpp>
+#include <Geode/modify/CCEGLView.hpp>
 #include <Geode/utils/Keyboard.hpp>
 
 #include "BetterTextInputNode.hpp"
 
 #include "utils.hpp"
 
-// Win64 bindings inline CCEGLView::onGLFWKeyCallback/onGLFWMouseCallBack, so we
-// can't Modify them. Use Geode's KeyboardInputEvent/MouseInputEvent instead.
+// Win64 bindings inline CCEGLView::onGLFWKeyCallback/onGLFWMouseCallBack, so keyboard
+// and mouse use Geode's KeyboardInputEvent/MouseInputEvent. Char input still goes through
+// onGLFWCharCallback, which we can hook to block ctrl+letter from inserting text.
 
 using namespace geode::prelude;
 
@@ -87,11 +89,8 @@ namespace
 				break;
 		}
 
-		if (
-			data.action == KeyboardInputData::Action::Press &&
-			isCtrl(mods) &&
-			!isShift(mods)
-		) {
+		if (data.action == KeyboardInputData::Action::Press && isCtrl(mods))
+		{
 			switch (key)
 			{
 				case KEY_A:
@@ -119,6 +118,9 @@ namespace
 				default:
 					break;
 			}
+
+			// swallow ctrl/alt combos that weren't handled above so IME doesn't insert the key
+			return ListenerResult::Stop;
 		}
 
 		if (data.action == KeyboardInputData::Action::Press)
@@ -139,22 +141,6 @@ namespace
 						break;
 				}
 			}
-			else
-			{
-				switch (key)
-				{
-					case KEY_Left:
-						g_selectedInput->onHomeKey(false);
-						return ListenerResult::Stop;
-
-					case KEY_Right:
-						g_selectedInput->onEndKey(false);
-						return ListenerResult::Stop;
-
-					default:
-						break;
-				}
-			}
 
 			if (isShift(mods) && !isCtrl(mods))
 			{
@@ -169,7 +155,6 @@ namespace
 				}
 			}
 
-			// swallow ctrl/alt combos that weren't handled above so IME doesn't insert the key
 			if (hasShortcut(mods))
 				return ListenerResult::Stop;
 		}
@@ -192,8 +177,19 @@ namespace
 	}
 }
 
+struct BetterCCEGLViewChar : Modify<BetterCCEGLViewChar, CCEGLView>
+{
+	void onGLFWCharCallback(GLFWwindow* window, unsigned int c)
+	{
+		if (g_selectedInput && BI::platform::hasShortcutModifier())
+			return;
+
+		CCEGLView::onGLFWCharCallback(window, c);
+	}
+};
+
 $execute
 {
-	KeyboardInputEvent().listen(handleKey);
+	KeyboardInputEvent().listen(handleKey, -100);
 	MouseInputEvent().listen(handleMouse);
 }

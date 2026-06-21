@@ -157,11 +157,14 @@ namespace BI
 			switch (key)
 			{
 				case BI::PlatformKey::LEFT_CONTROL:
-					return (glfwMods & GLFW_MOD_CONTROL) || (GetKeyState(VK_CONTROL) & 0x8000);
+					return (glfwMods & GLFW_MOD_CONTROL) || (GetAsyncKeyState(VK_CONTROL) & 0x8000);
 				case BI::PlatformKey::LEFT_SHIFT:
-					return (glfwMods & GLFW_MOD_SHIFT) || (GetKeyState(VK_SHIFT) & 0x8000);
+					return (glfwMods & GLFW_MOD_SHIFT) || (GetAsyncKeyState(VK_SHIFT) & 0x8000);
 				case BI::PlatformKey::LEFT_ALT:
-					return (glfwMods & GLFW_MOD_ALT) || (GetKeyState(VK_LMENU) & 0x8000);
+					return (glfwMods & GLFW_MOD_ALT)
+						|| (GetAsyncKeyState(VK_MENU) & 0x8000)
+						|| (GetAsyncKeyState(VK_LMENU) & 0x8000)
+						|| (GetAsyncKeyState(VK_RMENU) & 0x8000);
 			}
 
 			return false;

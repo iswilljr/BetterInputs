@@ -25,10 +25,24 @@ struct BetterCCIMEDispatcher : geode::Modify<BetterCCIMEDispatcher, cocos2d::CCI
 	{
 		if (g_selectedInput)
 		{
-			// modifier combos (ctrl/cmd+a, etc.) are handled in platform key hooks;
-			// swallow the IME event so the character is not also inserted
+			// modifier combos are handled in platform key hooks
 			if (BI::platform::hasShortcutModifier())
 				return;
+
+			// Geode sends fake "a" inserts for arrow/home/end keys on Windows
+			switch (keyCode)
+			{
+				case cocos2d::enumKeyCodes::KEY_Left:
+				case cocos2d::enumKeyCodes::KEY_Right:
+				case cocos2d::enumKeyCodes::KEY_Up:
+				case cocos2d::enumKeyCodes::KEY_Down:
+				case cocos2d::enumKeyCodes::KEY_Home:
+				case cocos2d::enumKeyCodes::KEY_End:
+					return;
+
+				default:
+					break;
+			}
 
 			// enter/newline and other control chars must use vanilla IME handling;
 			// our insert path updates labels asynchronously and crashes in text areas
