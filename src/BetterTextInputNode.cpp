@@ -797,6 +797,9 @@ void BetterTextInputNode::highlightFromToPos(int from, int to)
 	if (from == to)
 		return;
 
+	// `to` is an exclusive end index; the last highlighted character is one before it.
+	int const renderTo = to == -1 ? -1 : static_cast<int>(to) - 1;
+
 	auto highlightColor = getHighlightColor();
 	m_fields->m_highlighted.update(m_fields->m_string, { from, to });
 
@@ -805,7 +808,7 @@ void BetterTextInputNode::highlightFromToPos(int from, int to)
 		auto label = static_cast<CCLabelBMFontPlus*>(this->m_textLabel);
 		auto highlight = m_fields->m_highlights[0];
 		auto fromCharInfo = getCharNodePosInfo(from, true);
-		auto toCharInfo = getCharNodePosInfo(to, false);
+		auto toCharInfo = getCharNodePosInfo(renderTo, false);
 
 		if (!fromCharInfo.sprite || !toCharInfo.sprite)
 			return;
@@ -845,7 +848,7 @@ void BetterTextInputNode::highlightFromToPos(int from, int to)
 		}
 
 		std::size_t relativeFrom = from;
-		std::size_t relativeTo = to == -1 ? m_fields->m_string.length() - 1 : to;
+		std::size_t relativeTo = to == -1 ? m_fields->m_string.length() - 1 : static_cast<std::size_t>(to) - 1;
 
 		bool hasHighlightedStart = false;
 		bool hasHighlightedEnd = false;
