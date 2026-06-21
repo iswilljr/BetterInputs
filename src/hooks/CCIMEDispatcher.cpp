@@ -25,11 +25,41 @@ struct BetterCCIMEDispatcher : geode::Modify<BetterCCIMEDispatcher, cocos2d::CCI
 	{
 		if (g_selectedInput)
 		{
-			// modifier combos are handled in platform key hooks
+#ifdef GEODE_IS_WINDOWS
+			// Geode sends fake "a" inserts for arrow/home/end keys on Windows.
+			// With a shortcut modifier held, KeyboardInputEvent may not receive them.
 			if (BI::platform::hasShortcutModifier())
-				return;
+			{
+				bool const isCtrl = BI::platform::keyDown(BI::PlatformKey::LEFT_CONTROL);
+				bool const isShift = BI::platform::keyDown(BI::PlatformKey::LEFT_SHIFT);
 
-			// Geode sends fake "a" inserts for arrow/home/end keys on Windows
+				switch (keyCode)
+				{
+					case cocos2d::enumKeyCodes::KEY_Left:
+						return g_selectedInput->onLeftArrowKey(isCtrl, isShift);
+
+					case cocos2d::enumKeyCodes::KEY_Right:
+						return g_selectedInput->onRightArrowKey(isCtrl, isShift);
+
+					case cocos2d::enumKeyCodes::KEY_Up:
+						return g_selectedInput->onUpArrowKey(isShift);
+
+					case cocos2d::enumKeyCodes::KEY_Down:
+						return g_selectedInput->onDownArrowKey(isShift);
+
+					case cocos2d::enumKeyCodes::KEY_Home:
+						return g_selectedInput->onHomeKey(isShift);
+
+					case cocos2d::enumKeyCodes::KEY_End:
+						return g_selectedInput->onEndKey(isShift);
+
+					default:
+						break;
+				}
+
+				return;
+			}
+
 			switch (keyCode)
 			{
 				case cocos2d::enumKeyCodes::KEY_Left:
@@ -43,6 +73,11 @@ struct BetterCCIMEDispatcher : geode::Modify<BetterCCIMEDispatcher, cocos2d::CCI
 				default:
 					break;
 			}
+#else
+			// modifier combos are handled in platform key hooks
+			if (BI::platform::hasShortcutModifier())
+				return;
+#endif
 
 			// enter/newline and other control chars must use vanilla IME handling;
 			// our insert path updates labels asynchronously and crashes in text areas
