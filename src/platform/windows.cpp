@@ -1,8 +1,10 @@
 #include <Geode/modify/CCEGLView.hpp>
 #include <Geode/cocos/robtop/glfw/glfw3.h>
+#include <Geode/utils/Keyboard.hpp>
 
 #include "BetterTextInputNode.hpp"
 
+#include "keyboard.hpp"
 #include "utils.hpp"
 
 using namespace geode::prelude;
@@ -170,3 +172,13 @@ struct BetterCCEGLView : Modify<BetterCCEGLView, CCEGLView>
 			g_selectedInput->useUpdateBlinkPos(false);
 	}
 };
+
+$on_mod(Loaded)
+{
+	KeyboardInputEvent().listen([](KeyboardInputData& data) {
+		if (BI::keyboard::handleInput(data))
+			return ListenerResult::Stop;
+
+		return ListenerResult::Propagate;
+	});
+}
