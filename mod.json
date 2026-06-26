@@ -5,18 +5,17 @@
         "mac": "2.2081"
     },
     "version": "v5.0.0",
-    "id": "spaghettdev.betterinputs",
+    "id": "iswilljr.betterinputs",
     "name": "BetterInputs",
-    "developer": "SpaghettDev",
+    "developer": "iswilljr",
     "description": "Makes inputs behave like they should.",
     "tags": ["enhancement"],
     "links": {
-        "community": "https://discord.gg/3bShQb6Jz3",
-        "source": "https://github.com/SpaghettDev/BetterInputs"
+        "source": "https://github.com/iswilljr/BetterInputs"
     },
     "issues": {
         "info": "Report any bugs/suggestions here.",
-        "url": "https://github.com/SpaghettDev/BetterInputs/issues"
+        "url": "https://github.com/iswilljr/BetterInputs/issues"
     },
     "settings": {
         "allow-any-character": {

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [v5.0.0-beta.1] - 2026-06-26
+
+### Changed
+
+- Target Geode version (v4.2.0 -> v5.7.1)
+
 ## [v4.2.0-beta.13] - 2025-01-01
 
 ### Changed
